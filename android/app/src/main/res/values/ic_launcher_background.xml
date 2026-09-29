@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Warna cream latar logo Warung Lupi (diambil dari pixel background
+         logo asli: RGB 252,250,247). Dipakai oleh adaptive icon API 26+. -->
+    <color name="ic_launcher_background">#FCFAF7</color>
+</resources>

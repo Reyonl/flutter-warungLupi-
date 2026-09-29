@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon (Android 8+). Foreground = logo Warung Lupi yang sudah
+     diskalakan ke dalam safe zone 66% (content logo ~63% dari canvas) supaya
+     tidak terpotong oleh mask bulat/squircle. Background = warna cream logo
+     (#FCFAF7) agar konsisten dengan badge pada logo aslinya. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>
