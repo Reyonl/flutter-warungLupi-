@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -40,6 +41,7 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
   final _descriptionCtrl = TextEditingController();
   final _qtyCtrl = TextEditingController(text: '1');
   final _priceCtrl = TextEditingController();
+  final _qtyFocusNode = FocusNode();
   int _formSubtotal = 0;
   int? _editingItemId;
 
@@ -132,6 +134,7 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
     _descriptionCtrl.dispose();
     _qtyCtrl.dispose();
     _priceCtrl.dispose();
+    _qtyFocusNode.dispose();
     super.dispose();
   }
 
@@ -166,12 +169,22 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
   }
 
   // ---- Item ----
+  /// Parse harga dari teks terformat (mis. "-9.000" → -9000).
+  /// Padanan `handlePriceChange` di website (negative = potongan).
+  int _priceValue() {
+    final raw = _priceCtrl.text.replaceAll('.', '');
+    final clean = sanitizePriceInput(raw);
+    final parsed = int.tryParse(clean.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+    return clean.startsWith('-') ? -parsed.abs() : parsed;
+  }
+
   void _handlePriceChange(String raw) {
-    // sanitasi harga (padanan handlePriceChange)
-    final clean = sanitizePriceInput(raw.replaceAll('.', ''));
-    final val = int.tryParse(clean.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
-    final isNeg = clean.startsWith('-');
-    final shown = isNeg ? '-$val' : '$val';
+    // sanitasi harga — polanya sama dengan handlePriceChange di CreateTransaction.jsx
+    var clean = sanitizePriceInput(raw.replaceAll('.', ''));
+    if (clean == '') clean = '0';
+    final parsed = int.tryParse(clean.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final negative = clean.startsWith('-');
+    final shown = negative ? '-$parsed' : '$parsed';
     _priceCtrl.value = TextEditingValue(
       text: formatPriceDisplay(shown.isEmpty ? '0' : shown),
       selection: TextSelection.collapsed(offset: _priceCtrl.text.length),
@@ -181,8 +194,7 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
 
   int _calcSubtotal() {
     final qty = int.tryParse(_qtyCtrl.text) ?? 0;
-    final price =
-        int.tryParse(_priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final price = _priceValue();
     final name = _isManualItem ? _manualNameCtrl.text : (_formItem?.name ?? '');
     return calculatePromoSubtotal(name, qty, price);
   }
@@ -198,8 +210,7 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
       return;
     }
     final qty = int.tryParse(_qtyCtrl.text) ?? 0;
-    final price =
-        int.tryParse(_priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final price = _priceValue();
     final name = _isManualItem ? _manualNameCtrl.text.trim() : _formItem?.name;
 
     if (name == null ||
@@ -303,6 +314,12 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
   Future<void> _finalizeBon() async {
     if (_savingBon) return; // cegah double-submit → bon duplikat
     final prov = context.read<BonDraftProvider>();
+    // Validasi: total tidak boleh negatif (potongan melebihi nilai item).
+    if (prov.items.isNotEmpty && prov.totalAmount < 0) {
+      setState(() => _error =
+          'Total belanja tidak boleh negatif. Periksa potongan Anda.');
+      return;
+    }
     setState(() {
       _savingBon = true;
       _error = null;
@@ -398,6 +415,7 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
                           products: prodProv.products,
                           qtyCtrl: _qtyCtrl,
                           priceCtrl: _priceCtrl,
+                          qtyFocusNode: _qtyFocusNode,
                           manualNameCtrl: _manualNameCtrl,
                           descriptionCtrl: _descriptionCtrl,
                           subtotal: _formSubtotal,
@@ -408,8 +426,10 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
                             setState(() {
                               _formItem = p;
                               _isManualItem = false;
-                              _priceCtrl.text = p.defaultPrice.toString();
+                              _qtyCtrl.text = '1';
+                              _priceCtrl.text = formatPriceDisplay(p.defaultPrice.toString());
                               _formSubtotal = _calcSubtotal();
+                              FocusScope.of(context).requestFocus(_qtyFocusNode);
                             });
                           },
                           onSelectManual: () {
@@ -417,6 +437,16 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
                               _isManualItem = true;
                               _formItem = null;
                               _priceCtrl.clear();
+                              _formSubtotal = 0;
+                            });
+                          },
+                          onClearItem: () {
+                            setState(() {
+                              _formItem = null;
+                              _isManualItem = false;
+                              _manualNameCtrl.clear();
+                              _priceCtrl.clear();
+                              _qtyCtrl.text = '1';
                               _formSubtotal = 0;
                             });
                           },
@@ -534,31 +564,16 @@ class _HeaderCard extends StatelessWidget {
   /// yang sudah nonaktif tidak ada di `customers` (hanya pelanggan aktif yang
   /// dimuat) sehingga harus ditambahkan manual — kalau tidak, dropdown
   /// kehilangan nilainya dan menampilkan hint kosong.
-  List<DropdownMenuItem<int?>> _customerItems() {
-    final items = <DropdownMenuItem<int?>>[
-      const DropdownMenuItem(
-        value: null,
-        child: Text('Umum / Tanpa Pelanggan'),
-      ),
-      ...customers.map(
-        (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
-      ),
-    ];
-    if (headerSaved &&
-        savedCustomerId != null &&
-        !customers.any((c) => c.id == savedCustomerId)) {
-      items.add(
-        DropdownMenuItem(
-          value: savedCustomerId,
-          child: Text(
-            savedCustomerName.isEmpty
-                ? 'Pelanggan #$savedCustomerId'
-                : '$savedCustomerName (nonaktif)',
-          ),
-        ),
-      );
+  String? get _customerDisplayName {
+    if (customerId == null) return null;
+    final c = customers.where((x) => x.id == customerId).firstOrNull;
+    if (c != null) return c.name;
+    if (headerSaved && savedCustomerId == customerId) {
+      return savedCustomerName.isEmpty
+          ? 'Pelanggan #$savedCustomerId'
+          : '$savedCustomerName (nonaktif)';
     }
-    return items;
+    return null;
   }
 
   @override
@@ -575,14 +590,12 @@ class _HeaderCard extends StatelessWidget {
                 final isWide = c.maxWidth >= 520;
                 final customerField = _FieldLabel(
                   label: 'Pelanggan',
-                  child: DropdownButtonFormField<int?>(
-                    initialValue: customerId,
-                    isDense: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Pilih pelanggan...',
-                    ),
-                    items: _customerItems(),
-                    onChanged: headerSaved ? null : (v) => onCustomerChanged(v),
+                  child: CustomerSearchField(
+                    initialCustomerId: customerId,
+                    initialCustomerName: _customerDisplayName,
+                    enabled: !headerSaved,
+                    onSelected: (id) => onCustomerChanged(id),
+                    onClear: () => onCustomerChanged(null),
                   ),
                 );
                 final dateField = _FieldLabel(
@@ -696,6 +709,7 @@ class _ItemFormCard extends StatelessWidget {
   final List<Product> products;
   final TextEditingController qtyCtrl;
   final TextEditingController priceCtrl;
+  final FocusNode qtyFocusNode;
   final TextEditingController manualNameCtrl;
   final TextEditingController descriptionCtrl;
   final int subtotal;
@@ -704,6 +718,7 @@ class _ItemFormCard extends StatelessWidget {
   final ValueChanged<String> onPriceChanged;
   final ValueChanged<Product> onSelectProduct;
   final VoidCallback onSelectManual;
+  final VoidCallback onClearItem;
   final VoidCallback onCancelManual;
   final VoidCallback onAddItem;
   final VoidCallback onCancelEdit;
@@ -714,6 +729,7 @@ class _ItemFormCard extends StatelessWidget {
     required this.products,
     required this.qtyCtrl,
     required this.priceCtrl,
+    required this.qtyFocusNode,
     required this.manualNameCtrl,
     required this.descriptionCtrl,
     required this.subtotal,
@@ -722,6 +738,7 @@ class _ItemFormCard extends StatelessWidget {
     required this.onPriceChanged,
     required this.onSelectProduct,
     required this.onSelectManual,
+    required this.onClearItem,
     required this.onCancelManual,
     required this.onAddItem,
     required this.onCancelEdit,
@@ -735,31 +752,19 @@ class _ItemFormCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Item (dropdown produk + manual)
+            // Item (searchable product field + manual)
             if (!isManualItem)
               _FieldLabel(
                 label: 'Item',
-                child: DropdownButtonFormField<int>(
-                  initialValue: formItem?.id,
-                  isDense: true,
-                  decoration: const InputDecoration(hintText: 'Cari item...'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: -1,
-                      child: Text('+ Input Manual / Item Lain'),
-                    ),
-                    ...products.map(
-                      (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),
-                    ),
-                  ],
-                  onChanged: (id) {
-                    if (id == -1) {
-                      onSelectManual();
-                    } else if (id != null) {
-                      onSelectProduct(products.firstWhere((p) => p.id == id));
-                    }
-                  },
-                ),
+                child: formItem != null
+                    ? _SelectedItemTile(
+                        product: formItem!,
+                        onClear: onClearItem,
+                      )
+                    : ProductSearchField(
+                        onSelected: onSelectProduct,
+                        onSelectManual: onSelectManual,
+                      ),
               )
             else
               _FieldLabel(
@@ -789,13 +794,13 @@ class _ItemFormCard extends StatelessWidget {
                 ),
               ),
             if (formItem != null && !isManualItem)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
                 child: Text(
-                  'Harga default: ${formatRupiah(formItem!.defaultPrice)} / ${formItem!.unit}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
+                  'Ubah harga di bawah jika perlu (boleh minus untuk potongan).',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.gray500,
                   ),
                 ),
               ),
@@ -819,6 +824,7 @@ class _ItemFormCard extends StatelessWidget {
                     label: 'Qty',
                     child: TextField(
                       controller: qtyCtrl,
+                      focusNode: qtyFocusNode,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.right,
                       onChanged: (_) => onItemChanged(),
@@ -833,10 +839,22 @@ class _ItemFormCard extends StatelessWidget {
                     label: 'Harga',
                     child: TextField(
                       controller: priceCtrl,
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.numberWithOptions(
+                        signed: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
+                      ],
                       textAlign: TextAlign.right,
                       onChanged: onPriceChanged,
-                      decoration: const InputDecoration(hintText: '0'),
+                      decoration: InputDecoration(
+                        hintText: '0',
+                        helperText: 'Minus = potongan (mis. -9.000)',
+                        helperStyle: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.gray500,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -907,6 +925,58 @@ class _ItemFormCard extends StatelessWidget {
   }
 }
 
+// ============================ Selected Item Tile ============================
+/// Kartu ringkas item yang sudah dipilih lewat [ProductSearchField].
+/// Menampilkan nama + harga default + unit, dengan tombol [X] untuk ganti
+/// item (kembali ke mode pencarian).
+class _SelectedItemTile extends StatelessWidget {
+  final Product product;
+  final VoidCallback onClear;
+
+  const _SelectedItemTile({
+    required this.product,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.borderStrong),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, size: 18, color: AppColors.brand600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              product.name,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMain,
+              ),
+            ),
+          ),
+          Text(
+            '${formatRupiah(product.defaultPrice)} / ${product.unit}',
+            style: const TextStyle(fontSize: 12, color: AppColors.gray600),
+          ),
+          IconButton(
+            tooltip: 'Ganti item',
+            visualDensity: VisualDensity.compact,
+            onPressed: onClear,
+            icon: const Icon(Icons.close, size: 18, color: AppColors.gray500),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ============================ Item Row ============================
 class _ItemRow extends StatelessWidget {
   final TransactionItem item;
@@ -958,6 +1028,42 @@ class _ItemRow extends StatelessWidget {
                     color: AppColors.gray600,
                   ),
                 ),
+                if (item.unitPrice < 0) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerBg,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppColors.dangerBorder),
+                        ),
+                        child: Text(
+                          'POTONGAN',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: AppColors.dangerText,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        formatRupiah(item.unitPrice.abs()),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dangerText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
 
+export 'customer_search_field.dart';
+export 'product_search_field.dart';
+
 /// Debouncer sederhana untuk pencarian (meniru `setTimeout(fetch, 350)`).
 class Debouncer {
   final Duration delay;
