@@ -79,8 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
     if (raw.isNotEmpty && Uri.tryParse(raw)?.hasScheme != true) {
       setState(
-        () => _serverError =
-            'Alamat harus berupa URL lengkap, contoh: https://warunglupi.tplp004.com',
+        () => _serverError = 'Alamat harus berupa URL lengkap, contoh: https://warunglupi.tplp004.com',
       );
       return;
     }
@@ -143,8 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       if (paired.isEmpty) {
         setState(
-          () => _pairError =
-              'Tidak ada perangkat Bluetooth yang terpasang (paired). Pasangkan printer Anda lewat Pengaturan Android → Bluetooth (PIN umumnya 0000 atau 1234), lalu tekan tombol ini lagi.',
+          () => _pairError = 'Tidak ada perangkat Bluetooth yang terpasang (paired). Pasangkan printer Anda lewat Pengaturan Android → Bluetooth (PIN umumnya 0000 atau 1234), lalu tekan tombol ini lagi.',
         );
         return;
       }
@@ -571,10 +569,7 @@ class _PrinterCard extends StatelessWidget {
                       d.displayName,
                       style: const TextStyle(fontSize: 14),
                     ),
-                    subtitle: Text(
-                      d.mac,
-                      style: const TextStyle(fontSize: 10),
-                    ),
+                    subtitle: Text(d.mac, style: const TextStyle(fontSize: 10)),
                     trailing: pairing
                         ? const SizedBox(
                             width: 18,

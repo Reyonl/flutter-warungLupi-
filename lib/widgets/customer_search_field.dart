@@ -78,12 +78,15 @@ class _CustomerSearchFieldState extends State<CustomerSearchField> {
     final query = _controller.text.trim().toLowerCase();
 
     // Filter real-time dari list customer yang sudah dimuat provider (prefix / contains match)
-    final filtered = customerProvider.customers.where((c) {
-      if (!c.isActive && c.id != widget.initialCustomerId) return false;
-      if (query.isEmpty) return true;
-      return c.name.toLowerCase().contains(query) ||
-          (c.phone != null && c.phone!.contains(query));
-    }).take(10).toList();
+    final filtered = customerProvider.customers
+        .where((c) {
+          if (!c.isActive && c.id != widget.initialCustomerId) return false;
+          if (query.isEmpty) return true;
+          return c.name.toLowerCase().contains(query) ||
+              (c.phone != null && c.phone!.contains(query));
+        })
+        .take(10)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +119,10 @@ class _CustomerSearchFieldState extends State<CustomerSearchField> {
             ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
               borderSide: const BorderSide(color: AppColors.border),
@@ -127,7 +133,10 @@ class _CustomerSearchFieldState extends State<CustomerSearchField> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: AppColors.brand600, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.brand600,
+                width: 1.5,
+              ),
             ),
           ),
           onChanged: (val) {
@@ -169,77 +178,95 @@ class _CustomerSearchFieldState extends State<CustomerSearchField> {
                     ),
                   )
                 : customerProvider.error != null
-                    ? Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          customerProvider.error!,
-                          style: const TextStyle(color: AppColors.dangerText, fontSize: 13),
+                ? Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      customerProvider.error!,
+                      style: const TextStyle(
+                        color: AppColors.dangerText,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                : filtered.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'Tidak ada pelanggan ditemukan',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
                         ),
-                      )
-                    : filtered.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(
-                              child: Text(
-                                'Tidak ada pelanggan ditemukan',
-                                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final cust = filtered[index];
+                      return InkWell(
+                        onTap: () {
+                          _controller.text = cust.name;
+                          setState(() {
+                            _isDropdownOpen = false;
+                          });
+                          widget.onSelected(cust.id);
+                          _focusNode.unfocus();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            border: index < filtered.length - 1
+                                ? const Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.gray100,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.person_outline,
+                                size: 16,
+                                color: AppColors.textMuted,
                               ),
-                            ),
-                          )
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
-                              final cust = filtered[index];
-                              return InkWell(
-                                onTap: () {
-                                  _controller.text = cust.name;
-                                  setState(() {
-                                    _isDropdownOpen = false;
-                                  });
-                                  widget.onSelected(cust.id);
-                                  _focusNode.unfocus();
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    border: index < filtered.length - 1
-                                        ? const Border(bottom: BorderSide(color: AppColors.gray100))
-                                        : null,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.person_outline, size: 16, color: AppColors.textMuted),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              cust.name,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                                color: AppColors.textMain,
-                                              ),
-                                            ),
-                                            if (cust.phone != null && cust.phone!.isNotEmpty)
-                                              Text(
-                                                cust.phone!,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: AppColors.textMuted,
-                                                ),
-                                              ),
-                                          ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      cust.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                        color: AppColors.textMain,
+                                      ),
+                                    ),
+                                    if (cust.phone != null &&
+                                        cust.phone!.isNotEmpty)
+                                      Text(
+                                        cust.phone!,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textMuted,
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
-                              );
-                            },
+                              ),
+                            ],
                           ),
+                        ),
+                      );
+                    },
+                  ),
           ),
       ],
     );

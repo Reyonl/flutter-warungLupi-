@@ -70,9 +70,7 @@ class _ProductSearchFieldState extends State<ProductSearchField> {
     final q = query.toLowerCase();
     final list = q.isEmpty
         ? products
-        : products
-            .where((p) => p.name.toLowerCase().contains(q))
-            .toList();
+        : products.where((p) => p.name.toLowerCase().contains(q)).toList();
     return list.take(10).toList();
   }
 
@@ -101,10 +99,7 @@ class _ProductSearchFieldState extends State<ProductSearchField> {
                       widget.onClear?.call();
                     },
                   )
-                : const Icon(
-                    Icons.arrow_drop_down,
-                    color: AppColors.textMuted,
-                  ),
+                : const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
           ),
           onChanged: (_) => setState(() => _isOpen = true),
           onTap: () => setState(() => _isOpen = true),
@@ -138,110 +133,110 @@ class _ProductSearchFieldState extends State<ProductSearchField> {
                     ),
                   )
                 : prodProv.error != null
-                    ? Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          prodProv.error!,
-                          style: const TextStyle(
-                            color: AppColors.dangerText,
-                            fontSize: 13,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: filtered.length + 1, // +1 = opsi manual
-                        itemBuilder: (context, index) {
-                          if (index == 0) {
-                            return InkWell(
-                              onTap: () {
-                                _controller.clear();
-                                setState(() => _isOpen = false);
-                                widget.onSelectManual?.call();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 12,
-                                ),
-                                decoration: const BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(color: AppColors.gray100),
-                                  ),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(
-                                      Icons.add,
-                                      size: 16,
-                                      color: AppColors.brand600,
-                                    ),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'Input Manual / Item Lain',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.brand600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-                          final item = filtered[index - 1];
-                          return InkWell(
-                            onTap: () {
-                              _controller.clear();
-                              setState(() => _isOpen = false);
-                              widget.onSelected(item);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                border: index < filtered.length
-                                    ? const Border(
-                                        bottom: BorderSide(
-                                          color: AppColors.gray100,
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 16,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      item.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: AppColors.textMain,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${formatRupiah(item.defaultPrice)} / ${item.unit}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.gray600,
-                                    ),
-                                  ),
-                                ],
+                ? Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      prodProv.error!,
+                      style: const TextStyle(
+                        color: AppColors.dangerText,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filtered.length + 1, // +1 = opsi manual
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return InkWell(
+                          onTap: () {
+                            _controller.clear();
+                            setState(() => _isOpen = false);
+                            widget.onSelectManual?.call();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(color: AppColors.gray100),
                               ),
                             ),
-                          );
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.add,
+                                  size: 16,
+                                  color: AppColors.brand600,
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Input Manual / Item Lain',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.brand600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      final item = filtered[index - 1];
+                      return InkWell(
+                        onTap: () {
+                          _controller.clear();
+                          setState(() => _isOpen = false);
+                          widget.onSelected(item);
                         },
-                      ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            border: index < filtered.length
+                                ? const Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.gray100,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.inventory_2_outlined,
+                                size: 16,
+                                color: AppColors.textMuted,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: AppColors.textMain,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${formatRupiah(item.defaultPrice)} / ${item.unit}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.gray600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         if (_isOpen && filtered.isEmpty && query.isNotEmpty)
           const Padding(

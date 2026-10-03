@@ -41,15 +41,29 @@ class ThermalReceipt extends StatelessWidget {
     );
 
     Widget row(String label, String value) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label, style: TextStyle(fontFamily: font, fontSize: 13, color: Colors.black)),
-              Text(value, style: TextStyle(fontFamily: font, fontSize: 13, color: Colors.black)),
-            ],
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: font,
+              fontSize: 13,
+              color: Colors.black,
+            ),
           ),
-        );
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: font,
+              fontSize: 13,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Container(
       width: preview ? _width : null,
@@ -60,7 +74,11 @@ class ThermalReceipt extends StatelessWidget {
               border: Border.all(color: AppColors.border),
               borderRadius: BorderRadius.circular(8),
               boxShadow: const [
-                BoxShadow(color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 2)),
+                BoxShadow(
+                  color: Color(0x10000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
               ],
             )
           : null,
@@ -83,12 +101,20 @@ class ThermalReceipt extends StatelessWidget {
           Text(
             'Ke pasar membeli semangka',
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: font, fontSize: preview ? 13 : 11, color: Colors.black),
+            style: TextStyle(
+              fontFamily: font,
+              fontSize: preview ? 13 : 11,
+              color: Colors.black,
+            ),
           ),
           Text(
             'Jangan lupa mampir ke Lupi',
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: font, fontSize: preview ? 13 : 11, color: Colors.black),
+            style: TextStyle(
+              fontFamily: font,
+              fontSize: preview ? 13 : 11,
+              color: Colors.black,
+            ),
           ),
           divider,
           // Info
@@ -98,7 +124,8 @@ class ThermalReceipt extends StatelessWidget {
           divider,
           // Items
           ...items.map((item) {
-            final name = (item.description != null && item.description!.isNotEmpty)
+            final name =
+                (item.description != null && item.description!.isNotEmpty)
                 ? '${item.productName} - ${item.description}'
                 : item.productName;
             return Padding(
@@ -120,11 +147,19 @@ class ThermalReceipt extends StatelessWidget {
                     children: [
                       Text(
                         '${item.quantity} x ${formatNumber(item.unitPrice)}',
-                        style: TextStyle(fontFamily: font, fontSize: preview ? 14 : 12, color: Colors.black),
+                        style: TextStyle(
+                          fontFamily: font,
+                          fontSize: preview ? 14 : 12,
+                          color: Colors.black,
+                        ),
                       ),
                       Text(
                         formatNumber(item.subtotal),
-                        style: TextStyle(fontFamily: font, fontSize: preview ? 14 : 12, color: Colors.black),
+                        style: TextStyle(
+                          fontFamily: font,
+                          fontSize: preview ? 14 : 12,
+                          color: Colors.black,
+                        ),
                       ),
                     ],
                   ),
@@ -164,7 +199,11 @@ class ThermalReceipt extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Catatan: ${transaction.notes}',
-              style: TextStyle(fontFamily: font, fontSize: preview ? 13 : 11, color: Colors.black),
+              style: TextStyle(
+                fontFamily: font,
+                fontSize: preview ? 13 : 11,
+                color: Colors.black,
+              ),
             ),
           ],
           // QR & footer
@@ -190,7 +229,11 @@ class ThermalReceipt extends StatelessWidget {
           Text(
             'Semoga puas di hati',
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: font, fontSize: preview ? 13 : 11, color: Colors.black),
+            style: TextStyle(
+              fontFamily: font,
+              fontSize: preview ? 13 : 11,
+              color: Colors.black,
+            ),
           ),
         ],
       ),
