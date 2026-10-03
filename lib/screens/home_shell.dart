@@ -6,12 +6,14 @@ import 'bon/bon_list_screen.dart';
 import 'customers/customer_list_screen.dart';
 import 'dashboard_screen.dart';
 import 'products/category_list_screen.dart';
+import 'products/cigarette_report_screen.dart';
 import 'products/product_list_screen.dart';
 import 'settings/settings_screen.dart';
 
 /// HomeShell — shell utama aplikasi.
-/// Meniru `Layout.jsx`: sidebar kiri (desktop) / drawer (mobile) dengan
-/// brand "Warung Lupi", grup menu **Bon** & **Data**, dan Pengaturan.
+/// Meniru `Layout.jsx` v2: nav flat (tanpa tombol aksen oranye), brand
+/// chip "WL" + "Warung Lupi" (Lupi sky-blue), entri **Laporan Rokok**,
+/// dan footer "Sistem rekap warung".
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -26,6 +28,7 @@ enum ShellPage {
   customers,
   items,
   categories,
+  cigaretteReport,
   settings,
 }
 
@@ -33,12 +36,13 @@ class _HomeShellState extends State<HomeShell> {
   ShellPage _page = ShellPage.dashboard;
 
   static const _titles = {
-    ShellPage.dashboard: 'Dashboard',
+    ShellPage.dashboard: 'Ringkasan',
     ShellPage.bonCreate: 'Buat Bon',
     ShellPage.bonList: 'Riwayat Bon',
     ShellPage.customers: 'Pelanggan',
     ShellPage.items: 'Daftar Item',
     ShellPage.categories: 'Kategori',
+    ShellPage.cigaretteReport: 'Laporan Rokok',
     ShellPage.settings: 'Pengaturan',
   };
 
@@ -46,6 +50,45 @@ class _HomeShellState extends State<HomeShell> {
     setState(() => _page = page);
     Navigator.of(context).pop(); // tutup drawer bila terbuka
   }
+
+  /// Chip "WL" — padanan Brand() di Layout.jsx (bg-ink, rounded-lg).
+  static Widget brandMark({double size = 28, double fontSize = 13}) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        'WL',
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  static const brandText = Text.rich(
+    TextSpan(
+      text: 'Warung ',
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
+        color: AppColors.textMain,
+      ),
+      children: [
+        TextSpan(
+          text: 'Lupi',
+          style: TextStyle(color: AppColors.brand600),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +101,15 @@ class _HomeShellState extends State<HomeShell> {
             onPressed: () => Scaffold.of(ctx).openDrawer(),
           ),
         ),
-        title: Text(_titles[_page]!),
+        title: Row(
+          children: [
+            brandMark(size: 24, fontSize: 11),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(_titles[_page]!, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
       ),
       drawer: _buildDrawer(context),
       body: _buildPage(),
@@ -66,34 +117,26 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Widget _buildDrawer(BuildContext context) {
-    Widget item(
-      ShellPage page,
-      String label,
-      IconData icon, {
-      bool accent = false,
-    }) {
+    Widget item(ShellPage page, String label, IconData icon) {
       final active = _page == page;
       return ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         leading: Icon(
           icon,
-          color: accent || active
-              ? (accent ? Colors.white : AppColors.brand600)
-              : AppColors.textMuted,
+          size: 19,
+          color: active ? AppColors.brand600 : AppColors.textMuted,
         ),
         title: Text(
           label,
           style: TextStyle(
             fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: accent
-                ? Colors.white
-                : (active ? AppColors.textMain : AppColors.textMuted),
+            fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+            color: active ? AppColors.brand700 : AppColors.textMuted,
           ),
         ),
-        tileColor: accent
-            ? AppColors.brand600
-            : (active ? AppColors.gray100 : null),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        selected: active,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         onTap: () => _go(page),
       );
     }
@@ -104,61 +147,26 @@ class _HomeShellState extends State<HomeShell> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 28, 20, 20),
-              child: Text(
-                'Warung Lupi',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textMain,
-                  letterSpacing: -0.3,
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+              child: Row(
+                children: [brandMark(), const SizedBox(width: 10), brandText],
               ),
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: [
                   item(
                     ShellPage.dashboard,
-                    'Dashboard',
+                    'Ringkasan',
                     Icons.dashboard_outlined,
                   ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(12, 20, 12, 8),
-                    child: Text(
-                      'BON',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                        color: AppColors.gray500,
-                      ),
-                    ),
-                  ),
-                  item(
-                    ShellPage.bonCreate,
-                    'Buat Bon',
-                    Icons.add_box_outlined,
-                    accent: true,
-                  ),
+                  item(ShellPage.bonCreate, 'Buat Bon', Icons.add_box_outlined),
                   item(
                     ShellPage.bonList,
                     'Riwayat Bon',
                     Icons.receipt_long_outlined,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(12, 20, 12, 8),
-                    child: Text(
-                      'DATA',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                        color: AppColors.gray500,
-                      ),
-                    ),
                   ),
                   item(ShellPage.customers, 'Pelanggan', Icons.people_outline),
                   item(ShellPage.items, 'Item', Icons.inventory_2_outlined),
@@ -167,13 +175,28 @@ class _HomeShellState extends State<HomeShell> {
                     'Kategori',
                     Icons.category_outlined,
                   ),
-                  const SizedBox(height: 24),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
                   item(
-                    ShellPage.settings,
-                    'Pengaturan',
-                    Icons.settings_outlined,
+                    ShellPage.cigaretteReport,
+                    'Laporan Rokok',
+                    Icons.bar_chart_outlined,
+                  ),
+                  item(ShellPage.settings, 'Pengaturan', Icons.tune_outlined),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(height: 1),
+                  SizedBox(height: 12),
+                  Text(
+                    'Sistem rekap warung',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
@@ -198,6 +221,8 @@ class _HomeShellState extends State<HomeShell> {
         return const ProductListScreen();
       case ShellPage.categories:
         return const CategoryListScreen();
+      case ShellPage.cigaretteReport:
+        return const CigaretteReportScreen(embedded: true);
       case ShellPage.settings:
         return const SettingsScreen();
     }
