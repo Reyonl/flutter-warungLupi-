@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' hide Category;
 
 import '../core/api/api_client.dart';
 import '../models/models.dart';
+import '../utils/format.dart';
 import 'repositories.dart';
 
 /// Base state bagi provider yang memuat list + loading + error.
@@ -377,6 +378,71 @@ class TransactionListProvider extends ChangeNotifier with LoadableState {
   }
 }
 
+/// Provider laporan rokok — mirror perilaku `CigaretteReport.jsx`.
+/// Default periode: hari ini (sama seperti web).
+class CigaretteReportProvider extends ChangeNotifier with LoadableState {
+  CigaretteReportProvider(this._repo);
+
+  final CigaretteReportRepository _repo;
+
+  CigaretteReport? report;
+  String dateFrom = today();
+  String dateTo = today();
+  String product = '';
+  String search = '';
+
+  bool get hasData => report != null;
+  CigaretteSummary get summary => report?.summary ?? CigaretteSummary.empty;
+
+  Future<void> load({int page = 1}) async {
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      report = await _repo.report(
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+        product: product,
+        search: search,
+        page: page,
+      );
+    } catch (e) {
+      error = ApiClient.errorMessage(e, fallback: 'Laporan gagal dimuat.');
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  void setDateRange(String from, String to) {
+    dateFrom = from;
+    dateTo = to;
+    load(page: 1);
+  }
+
+  void setProduct(String v) {
+    product = v;
+    load(page: 1);
+  }
+
+  void setSearch(String v) {
+    search = v;
+    load(page: 1);
+  }
+
+  void nextPage() {
+    if (report != null && report!.currentPage < report!.lastPage) {
+      load(page: report!.currentPage + 1);
+    }
+  }
+
+  void prevPage() {
+    if (report != null && report!.currentPage > 1) {
+      load(page: report!.currentPage - 1);
+    }
+  }
+}
+
 /// Data bersama untuk layar Buat/Edit Bon (CreateTransaction + TransactionDetail).
 class BonDraftProvider extends ChangeNotifier {
   BonDraftProvider(this._repo);
@@ -628,9 +694,7 @@ class BonDraftProvider extends ChangeNotifier {
   /// tidak pernah kembali ke urutan `id` selama sesi berjalan.
   List<TransactionItem> get orderedItems {
     if (_itemOrder.isEmpty) return items;
-    final byId = <int, TransactionItem>{
-      for (final it in items) it.id: it,
-    };
+    final byId = <int, TransactionItem>{for (final it in items) it.id: it};
     final out = <TransactionItem>[];
     for (final id in _itemOrder) {
       final it = byId.remove(id);

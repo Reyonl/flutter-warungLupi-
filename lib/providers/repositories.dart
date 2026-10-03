@@ -15,7 +15,10 @@ class CustomerRepository {
     final res = await _dio.get('/customers', queryParameters: params);
     final data = res.data;
     if (data is List) {
-      return data.whereType<Map<String, dynamic>>().map(Customer.fromJson).toList();
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map(Customer.fromJson)
+          .toList();
     }
     if (data is Map && data['data'] is List) {
       return (data['data'] as List)
@@ -27,13 +30,22 @@ class CustomerRepository {
   }
 
   /// POST /api/customers
-  Future<Customer> store({required String name, String? phone, String? notes}) async {
-    final res = await _dio.post('/customers', data: {
-      'name': name.trim(),
-      'phone': (phone == null || phone.isEmpty) ? null : phone.trim(),
-      'notes': (notes == null || notes.isEmpty) ? null : notes.trim(),
-    });
-    return Customer.fromJson(res.data is Map ? (res.data as Map).cast<String, dynamic>() : {});
+  Future<Customer> store({
+    required String name,
+    String? phone,
+    String? notes,
+  }) async {
+    final res = await _dio.post(
+      '/customers',
+      data: {
+        'name': name.trim(),
+        'phone': (phone == null || phone.isEmpty) ? null : phone.trim(),
+        'notes': (notes == null || notes.isEmpty) ? null : notes.trim(),
+      },
+    );
+    return Customer.fromJson(
+      res.data is Map ? (res.data as Map).cast<String, dynamic>() : {},
+    );
   }
 
   /// GET /api/customers/{id}
@@ -50,12 +62,15 @@ class CustomerRepository {
     String? notes,
     bool? isActive,
   }) async {
-    final res = await _dio.put('/customers/$id', data: {
-      if (name != null) 'name': name.trim(),
-      if (phone != null) 'phone': (phone.isEmpty) ? null : phone.trim(),
-      if (notes != null) 'notes': (notes.isEmpty) ? null : notes.trim(),
-      if (isActive != null) 'is_active': isActive,
-    });
+    final res = await _dio.put(
+      '/customers/$id',
+      data: {
+        if (name != null) 'name': name.trim(),
+        if (phone != null) 'phone': (phone.isEmpty) ? null : phone.trim(),
+        if (notes != null) 'notes': (notes.isEmpty) ? null : notes.trim(),
+        if (isActive != null) 'is_active': isActive,
+      },
+    );
     return Customer.fromJson((res.data as Map).cast<String, dynamic>());
   }
 
@@ -87,7 +102,10 @@ class CategoryRepository {
     final res = await _dio.get('/categories');
     final data = res.data;
     if (data is List) {
-      return data.whereType<Map<String, dynamic>>().map(Category.fromJson).toList();
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map(Category.fromJson)
+          .toList();
     }
     if (data is Map && data['data'] is List) {
       return (data['data'] as List)
@@ -121,7 +139,11 @@ class ProductRepository {
   final Dio _dio = ApiClient.instance.dio;
 
   /// GET /api/products?search=&category_id=&is_active=
-  Future<List<Product>> index({String search = '', int? categoryId, bool? isActive}) async {
+  Future<List<Product>> index({
+    String search = '',
+    int? categoryId,
+    bool? isActive,
+  }) async {
     final params = <String, dynamic>{};
     if (search.trim().isNotEmpty) params['search'] = search.trim();
     if (categoryId != null) params['category_id'] = categoryId;
@@ -129,7 +151,10 @@ class ProductRepository {
     final res = await _dio.get('/products', queryParameters: params);
     final data = res.data;
     if (data is List) {
-      return data.whereType<Map<String, dynamic>>().map(Product.fromJson).toList();
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map(Product.fromJson)
+          .toList();
     }
     if (data is Map && data['data'] is List) {
       return (data['data'] as List)
@@ -148,13 +173,16 @@ class ProductRepository {
     required String unit,
     bool isActive = true,
   }) async {
-    final res = await _dio.post('/products', data: {
-      'category_id': categoryId,
-      'name': name.trim(),
-      'default_price': defaultPrice,
-      'unit': unit.trim(),
-      'is_active': isActive,
-    });
+    final res = await _dio.post(
+      '/products',
+      data: {
+        'category_id': categoryId,
+        'name': name.trim(),
+        'default_price': defaultPrice,
+        'unit': unit.trim(),
+        'is_active': isActive,
+      },
+    );
     return Product.fromJson((res.data as Map).cast<String, dynamic>());
   }
 
@@ -167,13 +195,16 @@ class ProductRepository {
     String? unit,
     bool? isActive,
   }) async {
-    final res = await _dio.put('/products/$id', data: {
-      if (categoryId != null) 'category_id': categoryId,
-      if (name != null) 'name': name.trim(),
-      if (defaultPrice != null) 'default_price': defaultPrice,
-      if (unit != null) 'unit': unit.trim(),
-      if (isActive != null) 'is_active': isActive,
-    });
+    final res = await _dio.put(
+      '/products/$id',
+      data: {
+        if (categoryId != null) 'category_id': categoryId,
+        if (name != null) 'name': name.trim(),
+        if (defaultPrice != null) 'default_price': defaultPrice,
+        if (unit != null) 'unit': unit.trim(),
+        if (isActive != null) 'is_active': isActive,
+      },
+    );
     return Product.fromJson((res.data as Map).cast<String, dynamic>());
   }
 
@@ -197,10 +228,7 @@ class TransactionRepository {
     int page = 1,
     int perPage = 20,
   }) async {
-    final params = <String, dynamic>{
-      'page': page,
-      'per_page': perPage,
-    };
+    final params = <String, dynamic>{'page': page, 'per_page': perPage};
     if (search.trim().isNotEmpty) params['search'] = search.trim();
     if (dateFrom != null && dateFrom.isNotEmpty) params['date_from'] = dateFrom;
     if (dateTo != null && dateTo.isNotEmpty) params['date_to'] = dateTo;
@@ -219,11 +247,14 @@ class TransactionRepository {
     required String transactionDate, // yyyy-MM-dd
     String? notes,
   }) async {
-    final res = await _dio.post('/transactions', data: {
-      'customer_id': customerId,
-      'transaction_date': transactionDate,
-      'notes': (notes == null || notes.isEmpty) ? null : notes,
-    });
+    final res = await _dio.post(
+      '/transactions',
+      data: {
+        'customer_id': customerId,
+        'transaction_date': transactionDate,
+        'notes': (notes == null || notes.isEmpty) ? null : notes,
+      },
+    );
     return Transaction.fromJson((res.data as Map).cast<String, dynamic>());
   }
 
@@ -242,13 +273,16 @@ class TransactionRepository {
     String? paymentStatus,
     String? notes,
   }) async {
-    final res = await _dio.put('/transactions/$id', data: {
-      if (customerId != null) 'customer_id': customerId,
-      if (transactionDate != null) 'transaction_date': transactionDate,
-      if (status != null) 'status': status,
-      if (paymentStatus != null) 'payment_status': paymentStatus,
-      if (notes != null) 'notes': notes,
-    });
+    final res = await _dio.put(
+      '/transactions/$id',
+      data: {
+        if (customerId != null) 'customer_id': customerId,
+        if (transactionDate != null) 'transaction_date': transactionDate,
+        if (status != null) 'status': status,
+        if (paymentStatus != null) 'payment_status': paymentStatus,
+        if (notes != null) 'notes': notes,
+      },
+    );
     return Transaction.fromJson((res.data as Map).cast<String, dynamic>());
   }
 
@@ -268,15 +302,20 @@ class TransactionRepository {
     required int unitPrice,
     int? subtotal,
   }) async {
-    final res = await _dio.post('/transactions/$transactionId/items', data: {
-      'product_id': productId,
-      'product_name': productName,
-      'description': (description == null || description.isEmpty) ? null : description,
-      'quantity': quantity,
-      'unit': unit,
-      'unit_price': unitPrice,
-      if (subtotal != null) 'subtotal': subtotal,
-    });
+    final res = await _dio.post(
+      '/transactions/$transactionId/items',
+      data: {
+        'product_id': productId,
+        'product_name': productName,
+        'description': (description == null || description.isEmpty)
+            ? null
+            : description,
+        'quantity': quantity,
+        'unit': unit,
+        'unit_price': unitPrice,
+        if (subtotal != null) 'subtotal': subtotal,
+      },
+    );
     return TransactionItem.fromJson((res.data as Map).cast<String, dynamic>());
   }
 
@@ -291,15 +330,18 @@ class TransactionRepository {
     int? unitPrice,
     int? subtotal,
   }) async {
-    final res = await _dio.put('/transaction-items/$itemId', data: {
-      if (productId != null) 'product_id': productId,
-      if (productName != null) 'product_name': productName,
-      if (description != null) 'description': description,
-      if (quantity != null) 'quantity': quantity,
-      if (unit != null) 'unit': unit,
-      if (unitPrice != null) 'unit_price': unitPrice,
-      if (subtotal != null) 'subtotal': subtotal,
-    });
+    final res = await _dio.put(
+      '/transaction-items/$itemId',
+      data: {
+        if (productId != null) 'product_id': productId,
+        if (productName != null) 'product_name': productName,
+        if (description != null) 'description': description,
+        if (quantity != null) 'quantity': quantity,
+        if (unit != null) 'unit': unit,
+        if (unitPrice != null) 'unit_price': unitPrice,
+        if (subtotal != null) 'subtotal': subtotal,
+      },
+    );
     return TransactionItem.fromJson((res.data as Map).cast<String, dynamic>());
   }
 
@@ -320,9 +362,9 @@ class DashboardRepository {
     final stats = (json['stats'] as Map?)?.cast<String, dynamic>() ?? {};
     final recent = json['recent_transactions'] is List
         ? (json['recent_transactions'] as List)
-            .whereType<Map<String, dynamic>>()
-            .map(TransactionSummary.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(TransactionSummary.fromJson)
+              .toList()
         : <TransactionSummary>[];
 
     // CATATAN: `SUM()` pada kolom DECIMAL di MySQL dikembalikan sebagai
@@ -336,6 +378,36 @@ class DashboardRepository {
       masihHutang: numFrom(stats['masih_hutang']),
       totalPelanggan: numFrom(stats['total_pelanggan']),
       recent: recent,
+    );
+  }
+}
+
+/// Repository laporan rokok — mirror `Api\CigaretteReportController`.
+class CigaretteReportRepository {
+  final Dio _dio = ApiClient.instance.dio;
+
+  /// GET /api/reports/cigarettes?date_from&date_to&product&search&page
+  Future<CigaretteReport> report({
+    String? dateFrom,
+    String? dateTo,
+    String? product,
+    String? search,
+    int page = 1,
+  }) async {
+    final params = <String, dynamic>{'page': page};
+    if (dateFrom != null && dateFrom.isNotEmpty) params['date_from'] = dateFrom;
+    if (dateTo != null && dateTo.isNotEmpty) params['date_to'] = dateTo;
+    if (product != null && product.isNotEmpty) params['product'] = product;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final res = await _dio.get('/reports/cigarettes', queryParameters: params);
+    return CigaretteReport.fromJson((res.data as Map).cast<String, dynamic>());
+  }
+
+  /// GET /api/transactions/{id}/cigarettes — ringkasan rokok satu bon.
+  Future<BonCigaretteSummary> bonSummary(int transactionId) async {
+    final res = await _dio.get('/transactions/$transactionId/cigarettes');
+    return BonCigaretteSummary.fromJson(
+      (res.data as Map).cast<String, dynamic>(),
     );
   }
 }

@@ -48,6 +48,9 @@ class RekapanWarungApp extends StatelessWidget {
           create: (_) => TransactionListProvider(TransactionRepository()),
         ),
         ChangeNotifierProvider(
+          create: (_) => CigaretteReportProvider(CigaretteReportRepository()),
+        ),
+        ChangeNotifierProvider(
           create: (_) => BonDraftProvider(TransactionRepository()),
         ),
       ],

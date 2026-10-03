@@ -38,12 +38,14 @@ class Category {
       name: (json['name'] ?? '') as String,
       productsCount: json['products_count'] != null
           ? numFrom(json['products_count'])
-          : (json['products'] is List ? (json['products'] as List).length : null),
+          : (json['products'] is List
+                ? (json['products'] as List).length
+                : null),
       products: json['products'] is List
           ? (json['products'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map(Product.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(Product.fromJson)
+                .toList()
           : null,
     );
   }
@@ -86,12 +88,12 @@ class Product {
   }
 
   Map<String, dynamic> toJson() => {
-        'category_id': categoryId,
-        'name': name,
-        'default_price': defaultPrice,
-        'unit': unit,
-        'is_active': isActive,
-      };
+    'category_id': categoryId,
+    'name': name,
+    'default_price': defaultPrice,
+    'unit': unit,
+    'is_active': isActive,
+  };
 }
 
 /// Model Pelanggan — mirror tabel `customers`.
@@ -124,10 +126,10 @@ class Customer {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'phone': (phone == null || phone!.isEmpty) ? null : phone,
-        'notes': (notes == null || notes!.isEmpty) ? null : notes,
-      };
+    'name': name,
+    'phone': (phone == null || phone!.isEmpty) ? null : phone,
+    'notes': (notes == null || notes!.isEmpty) ? null : notes,
+  };
 }
 
 /// Model Item Bon — mirror tabel `transaction_items`.
@@ -169,14 +171,16 @@ class TransactionItem {
   }
 
   Map<String, dynamic> toJson() => {
-        'product_id': productId,
-        'product_name': productName,
-        'description': (description == null || description!.isEmpty) ? null : description,
-        'quantity': quantity,
-        'unit': unit,
-        'unit_price': unitPrice,
-        'subtotal': subtotal,
-      };
+    'product_id': productId,
+    'product_name': productName,
+    'description': (description == null || description!.isEmpty)
+        ? null
+        : description,
+    'quantity': quantity,
+    'unit': unit,
+    'unit_price': unitPrice,
+    'subtotal': subtotal,
+  };
 }
 
 /// Model Transaksi/Bon — mirror tabel `transactions`.
@@ -245,7 +249,10 @@ class Transaction {
       id: numFrom(json['id']),
       customerId: numFromOrNull(json['customer_id']),
       transactionNumber: (json['transaction_number'] ?? '') as String,
-      transactionDate: (json['transaction_date'] ?? '').toString().substring(0, 10),
+      transactionDate: (json['transaction_date'] ?? '').toString().substring(
+        0,
+        10,
+      ),
       totalAmount: numFrom(json['total_amount']),
       status: (json['status'] ?? 'draft') as String,
       paymentStatus: (json['payment_status'] ?? 'unpaid') as String,
@@ -255,9 +262,9 @@ class Transaction {
           : null,
       items: json['items'] is List
           ? (json['items'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map(TransactionItem.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(TransactionItem.fromJson)
+                .toList()
           : [],
     );
   }
@@ -315,7 +322,10 @@ class Paginated<T> {
     T Function(Map<String, dynamic>) fromJson,
   ) {
     final items = json['data'] is List
-        ? (json['data'] as List).whereType<Map<String, dynamic>>().map(fromJson).toList()
+        ? (json['data'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(fromJson)
+              .toList()
         : <T>[];
     return Paginated(
       data: items,
@@ -324,4 +334,172 @@ class Paginated<T> {
       total: numFrom(json['total'], fallback: items.length),
     );
   }
+}
+
+// ==================== LAPORAN ROKOK ====================
+// Padanan `Api\CigaretteReportController` + `resources/js/pages/CigaretteReport.jsx`.
+// Sumber kebenaran klasifikasi ada di server (CigaretteReportService);
+// Flutter hanya membaca hasil, TIDAK mengulang rule 'rokok' di sini.
+
+/// Baris item rokok — dipakai breakdown laporan maupun ringkasan satu bon.
+/// (`unitPrice` hanya terisi pada respons `bonSummary`.)
+class CigaretteItemRow {
+  final String productName;
+  final int totalQuantity;
+  final int totalSales;
+  final int? unitPrice;
+
+  const CigaretteItemRow({
+    required this.productName,
+    required this.totalQuantity,
+    required this.totalSales,
+    this.unitPrice,
+  });
+
+  factory CigaretteItemRow.fromJson(Map<String, dynamic> json) =>
+      CigaretteItemRow(
+        productName: (json['product_name'] ?? '') as String,
+        totalQuantity: numFrom(json['total_quantity'] ?? json['quantity']),
+        totalSales: numFrom(json['total_sales'] ?? json['subtotal']),
+        unitPrice: json['unit_price'] != null
+            ? numFrom(json['unit_price'])
+            : null,
+      );
+}
+
+/// Baris bon yang mengandung penjualan rokok (paginated).
+class CigaretteBonRow {
+  final int id;
+  final String transactionNumber;
+  final String transactionDate;
+  final String? customerName;
+  final String paymentStatus;
+  final int cigaretteQuantity;
+  final int cigaretteTotal;
+
+  const CigaretteBonRow({
+    required this.id,
+    required this.transactionNumber,
+    required this.transactionDate,
+    this.customerName,
+    required this.paymentStatus,
+    required this.cigaretteQuantity,
+    required this.cigaretteTotal,
+  });
+
+  factory CigaretteBonRow.fromJson(Map<String, dynamic> json) =>
+      CigaretteBonRow(
+        id: numFrom(json['id']),
+        transactionNumber: (json['transaction_number'] ?? '') as String,
+        transactionDate: (json['transaction_date'] ?? '').toString(),
+        customerName: json['customer_name'] as String?,
+        paymentStatus: (json['payment_status'] ?? 'unpaid') as String,
+        cigaretteQuantity: numFrom(json['cigarette_quantity']),
+        cigaretteTotal: numFrom(json['cigarette_total']),
+      );
+}
+
+/// Summary laporan rokok — kolom DECIMAL/SUM bisa datang sebagai String.
+class CigaretteSummary {
+  final int cigaretteQuantity;
+  final int cigaretteSales;
+  final int bonCount;
+  final int paidSales;
+  final int unpaidSales;
+
+  const CigaretteSummary({
+    required this.cigaretteQuantity,
+    required this.cigaretteSales,
+    required this.bonCount,
+    required this.paidSales,
+    required this.unpaidSales,
+  });
+
+  static const empty = CigaretteSummary(
+    cigaretteQuantity: 0,
+    cigaretteSales: 0,
+    bonCount: 0,
+    paidSales: 0,
+    unpaidSales: 0,
+  );
+
+  factory CigaretteSummary.fromJson(Map<String, dynamic> json) =>
+      CigaretteSummary(
+        cigaretteQuantity: numFrom(json['cigarette_quantity']),
+        cigaretteSales: numFrom(json['cigarette_sales']),
+        bonCount: numFrom(json['bon_count']),
+        paidSales: numFrom(json['paid_sales']),
+        unpaidSales: numFrom(json['unpaid_sales']),
+      );
+}
+
+/// Response lengkap `GET /api/reports/cigarettes`.
+class CigaretteReport {
+  final CigaretteSummary summary;
+  final List<CigaretteItemRow> items;
+  final List<CigaretteBonRow> bons;
+  final int bonTotal;
+  final int currentPage;
+  final int lastPage;
+  final List<String> products;
+
+  const CigaretteReport({
+    required this.summary,
+    required this.items,
+    required this.bons,
+    required this.bonTotal,
+    required this.currentPage,
+    required this.lastPage,
+    required this.products,
+  });
+
+  factory CigaretteReport.fromJson(Map<String, dynamic> json) {
+    final tx = json['transactions'] is Map
+        ? (json['transactions'] as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
+    return CigaretteReport(
+      summary: CigaretteSummary.fromJson(
+        json['summary'] is Map
+            ? (json['summary'] as Map).cast<String, dynamic>()
+            : const <String, dynamic>{},
+      ),
+      items: (json['items'] as List? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(CigaretteItemRow.fromJson)
+          .toList(),
+      bons: (tx['data'] as List? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(CigaretteBonRow.fromJson)
+          .toList(),
+      bonTotal: numFrom(tx['total']),
+      currentPage: numFrom(tx['current_page'], fallback: 1),
+      lastPage: numFrom(tx['last_page'], fallback: 1),
+      products: (json['products'] as List? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+    );
+  }
+}
+
+/// Ringkasan rokok satu bon — `GET /api/transactions/{id}/cigarettes`.
+class BonCigaretteSummary {
+  final List<CigaretteItemRow> items;
+  final int totalQuantity;
+  final int totalAmount;
+
+  const BonCigaretteSummary({
+    required this.items,
+    required this.totalQuantity,
+    required this.totalAmount,
+  });
+
+  factory BonCigaretteSummary.fromJson(Map<String, dynamic> json) =>
+      BonCigaretteSummary(
+        items: (json['items'] as List? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(CigaretteItemRow.fromJson)
+            .toList(),
+        totalQuantity: numFrom(json['total_quantity']),
+        totalAmount: numFrom(json['total_amount']),
+      );
 }
