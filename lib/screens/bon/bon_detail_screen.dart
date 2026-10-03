@@ -50,13 +50,19 @@ class _BonDetailScreenState extends State<BonDetailScreen> {
   bool _loading = true;
   String? _error;
 
+  /// Ringkasan rokok bon ini (`GET /transactions/{id}/cigarettes`).
+  /// null = belum dimuat ATAU bon tanpa rokok → section disembunyikan,
+  /// persis `TransactionDetail.jsx` (`rokok && rokok.total_quantity > 0`).
+  BonCigaretteSummary? _rokok;
+
   /// Transaksi yang dipakai SEMUA aksi (preview, cetak thermal, PDF, PNG,
   /// copy, RawBT) dengan urutan item hasil reorder manual bila ada.
   ///
   /// `_t` selalu menyimpan data apa adanya dari server; getter ini yang
   /// menerapkan urutan pilihan pengguna sehingga tidak ada jalur cetak yang
   /// lupa memakai urutan manual.
-  Transaction? get _ordered => _t?.withItemOrder(widget.customItemOrder ?? const []);
+  Transaction? get _ordered =>
+      _t?.withItemOrder(widget.customItemOrder ?? const []);
 
   String _thermalSize = '58mm';
   bool _isPrinting = false;
@@ -96,6 +102,14 @@ class _BonDetailScreenState extends State<BonDetailScreen> {
         _t = t;
         _loading = false;
       });
+      // Ringkasan rokok dimuat terpisah (fire-and-forget, seperti web):
+      // kegagalan diam saja → section tidak tampil.
+      CigaretteReportRepository()
+          .bonSummary(widget.transactionId)
+          .then((r) {
+            if (mounted) setState(() => _rokok = r);
+          })
+          .catchError((_) {});
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -447,8 +461,8 @@ class _BonDetailScreenState extends State<BonDetailScreen> {
                   FilledButton(
                     onPressed: _handleDownloadImage,
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFEAB308),
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.warningBg,
+                      foregroundColor: AppColors.warningText,
                     ),
                     child: const Text(
                       'Download',
@@ -479,7 +493,7 @@ class _BonDetailScreenState extends State<BonDetailScreen> {
                           FilledButton(
                             onPressed: _handleRawBT,
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF2563EB),
+                              backgroundColor: AppColors.brand600,
                             ),
                             child: const Text(
                               'RawBT',
@@ -522,10 +536,119 @@ class _BonDetailScreenState extends State<BonDetailScreen> {
                 onPressed: _isPrinting ? null : _handleCetak,
                 expand: true,
               ),
+              // Section Penjualan Rokok — hidden bila bon tidak punya rokok
+              if (_rokok != null && _rokok!.totalQuantity > 0) ...[
+                const SizedBox(height: 16),
+                _RokokSummaryCard(rokok: _rokok!),
+              ],
               // Aksi status pembayaran tidak ada di web (dipindah ke edit/create)
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Card "Penjualan Rokok" pada detail bon — padanan v2 di
+/// `TransactionDetail.jsx` (tersembunyi bila bon tidak punya rokok).
+class _RokokSummaryCard extends StatelessWidget {
+  final BonCigaretteSummary rokok;
+  const _RokokSummaryCard({required this.rokok});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Penjualan Rokok',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+              Text(
+                formatRupiah(rokok.totalAmount),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMain,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final item in rokok.items)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.productName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textMain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${item.totalQuantity} × ${formatNumber(item.unitPrice ?? 0)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 88,
+                    child: Text(
+                      formatRupiah(item.totalSales),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMain,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            '${rokok.totalQuantity} batang · ${rokok.items.length} item',
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: AppColors.textMuted,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }
