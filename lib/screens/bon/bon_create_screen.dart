@@ -160,9 +160,9 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
   }
 
   Future<void> _updatePaymentStatus(String status) async {
-    final err = await context
-        .read<BonDraftProvider>()
-        .updatePaymentStatus(status);
+    final err = await context.read<BonDraftProvider>().updatePaymentStatus(
+      status,
+    );
     if (!mounted) return;
     setState(() {});
     if (err != null) showToast(context, err, error: true);
@@ -316,8 +316,10 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
     final prov = context.read<BonDraftProvider>();
     // Validasi: total tidak boleh negatif (potongan melebihi nilai item).
     if (prov.items.isNotEmpty && prov.totalAmount < 0) {
-      setState(() => _error =
-          'Total belanja tidak boleh negatif. Periksa potongan Anda.');
+      setState(
+        () => _error =
+            'Total belanja tidak boleh negatif. Periksa potongan Anda.',
+      );
       return;
     }
     setState(() {
@@ -355,7 +357,8 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: Text(isEdit ? 'Edit Bon' : 'Buat Bon')),
-      body: _loadingRef &&
+      body:
+          _loadingRef &&
               !prov.headerSaved &&
               custProv.customers.isEmpty &&
               custProv.error == null
@@ -427,9 +430,12 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
                               _formItem = p;
                               _isManualItem = false;
                               _qtyCtrl.text = '1';
-                              _priceCtrl.text = formatPriceDisplay(p.defaultPrice.toString());
+                              _priceCtrl.text = formatPriceDisplay(
+                                p.defaultPrice.toString(),
+                              );
                               _formSubtotal = _calcSubtotal();
-                              FocusScope.of(context).requestFocus(_qtyFocusNode);
+                              FocusScope.of(context)
+                                  .requestFocus(_qtyFocusNode);
                             });
                           },
                           onSelectManual: () {
@@ -798,10 +804,7 @@ class _ItemFormCard extends StatelessWidget {
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   'Ubah harga di bawah jika perlu (boleh minus untuk potongan).',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.gray500,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppColors.gray500),
                 ),
               ),
             const SizedBox(height: 14),
@@ -933,10 +936,7 @@ class _SelectedItemTile extends StatelessWidget {
   final Product product;
   final VoidCallback onClear;
 
-  const _SelectedItemTile({
-    required this.product,
-    required this.onClear,
-  });
+  const _SelectedItemTile({required this.product, required this.onClear});
 
   @override
   Widget build(BuildContext context) {
@@ -1187,7 +1187,7 @@ class _TotalCard extends StatelessWidget {
                     style: SegmentedButton.styleFrom(
                       selectedBackgroundColor: isPaid
                           ? AppColors.successText
-                          : AppColors.dangerText,
+                          : AppColors.warningText,
                       selectedForegroundColor: Colors.white,
                       side: const BorderSide(color: AppColors.borderStrong),
                     ),
@@ -1205,7 +1205,7 @@ class _TotalCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: isPaid ? AppColors.successText : AppColors.dangerText,
+                  color: isPaid ? AppColors.successText : AppColors.warningText,
                 ),
               ),
             ),

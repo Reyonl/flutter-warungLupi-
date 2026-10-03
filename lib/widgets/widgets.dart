@@ -58,39 +58,39 @@ class StatusBadge extends StatelessWidget {
           );
   }
 
-  /// Badge status bon: completed → "Selesai" (gray-50 text-gray-700 border-gray-300),
-  /// draft → "Draft" (border-gray-300 text-gray-500).
+  /// Badge status bon — padanan `StatusBadge` v2 (Card.jsx):
+  /// completed → "Selesai" (chipBg/text-muted), draft → "Draft" (chipBg).
   factory StatusBadge.bonStatus(String status) {
     return status == 'completed'
         ? const StatusBadge(
             label: 'Selesai',
-            background: AppColors.gray100,
-            foreground: AppColors.gray800,
-            border: AppColors.gray200,
+            background: AppColors.chipBg,
+            foreground: AppColors.textMuted,
+            border: AppColors.chipBg,
           )
         : const StatusBadge(
             label: 'Draft',
-            background: Colors.transparent,
-            foreground: AppColors.gray600,
-            border: AppColors.gray200,
+            background: AppColors.chipBg,
+            foreground: AppColors.textMuted,
+            border: AppColors.chipBg,
           );
   }
 
-  /// Badge pembayaran kecil: paid → "Lunas" (green-100/green-700),
-  /// unpaid → "Hutang" (red-100/red-600).
+  /// Badge pembayaran — padanan v2: paid → "Lunas" (success-soft/success),
+  /// unpaid → "Hutang" (warning-soft/warning — amber, bukan merah).
   factory StatusBadge.payment(String paymentStatus) {
     return paymentStatus == 'paid'
         ? const StatusBadge(
             label: 'Lunas',
             background: AppColors.successBg,
             foreground: AppColors.successText,
-            border: AppColors.successBorder,
+            border: AppColors.successBg,
           )
         : const StatusBadge(
             label: 'Hutang',
-            background: AppColors.dangerBg,
-            foreground: AppColors.dangerText,
-            border: AppColors.dangerBorder,
+            background: AppColors.warningBg,
+            foreground: AppColors.warningText,
+            border: AppColors.warningBg,
           );
   }
 
@@ -114,10 +114,10 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: border),
       ),
       child: Text(
@@ -125,7 +125,7 @@ class StatusBadge extends StatelessWidget {
         style: TextStyle(
           color: foreground,
           fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -158,7 +158,8 @@ class InlineMessage extends StatelessWidget {
   }
 }
 
-/// Empty state — padanan `<div class="py-12 text-center ...">`.
+/// Empty state — padanan v2 `EmptyState` (States.jsx): teks sentral tanpa
+/// border/kotak — hierarchy murni tipografi.
 class EmptyState extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -167,37 +168,34 @@ class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle = '',
     this.action,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
       child: Column(
         children: [
           Text(
             title,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppColors.textMain,
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-          ),
-          if (action != null) ...[const SizedBox(height: 16), action!],
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+          ],
+          if (action != null) ...[const SizedBox(height: 12), action!],
         ],
       ),
     );
@@ -439,7 +437,8 @@ void showToast(BuildContext context, String message, {bool error = false}) {
     );
 }
 
-/// Header halaman konsisten (padanan `<h1 class="text-xl font-medium ...">`).
+/// Header halaman — padanan v2 `PageHeader` (Card.jsx): tanpa ikon,
+/// hierarchy murni tipografi (title bold tracking-tight, subtitle kecil).
 class PageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -455,9 +454,9 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: Column(
@@ -466,8 +465,9 @@ class PageHeader extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                     color: AppColors.textMain,
                   ),
                 ),
