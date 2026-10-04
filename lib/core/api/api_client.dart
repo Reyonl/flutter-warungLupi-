@@ -70,6 +70,79 @@ class ApiConfig {
       v.endsWith('/') ? v.substring(0, v.length - 1) : v;
 }
 
+/// Interceptor retry untuk kegagalan SEMENTARA di shared hosting.
+///
+/// Konteks: backend Warung Lupi hidup di hosting bersama (Hostinger) dan
+/// **tidak memakai auth** (lihat `bootstrap/app.php` Laravel: "No auth
+/// required for internal tool"). Saat trafik puncak — aplikasi membuka
+/// beberapa layar beruntun — PHP/MySQL kehabisan slot koneksi sesaat.
+/// Yang terlihat dari client: 500 `SQLSTATE[HY000] [2002] Operation not
+/// permitted` atau 403/429 dari lapis CDN di depan. Gejalanya: "Anda tidak
+/// memiliki akses" / "Server sedang bermasalah" yang muncul KADANG-KADANG
+/// saat lihat, edit, atau tambah nota — padahal tidak ada hak akses yang
+/// dilanggar sama sekali.
+///
+/// Kebijakan aman:
+/// - GET/HEAD: maksimum 2 retry. PUT/DELETE (idempoten): maksimum 1 retry.
+/// - POST tidak pernah di-retry — mencegah bon rangkap di server.
+/// - Hanya untuk transient: 403, 429, 5xx, timeout, connectionError.
+///   401/404/422 diteruskan apa adanya (bukan masalah sementara).
+class TransientFailureRetry extends Interceptor {
+  TransientFailureRetry(this._dio);
+
+  final Dio _dio;
+
+  static const _readMaxAttempts = 3; // 1 awal + 2 retry
+  static const _writeMaxAttempts = 2; // 1 awal + 1 retry
+  static const _retryKey = 'retry_attempt';
+
+  @override
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final opts = err.requestOptions;
+    final method = opts.method.toUpperCase();
+    final isRead = method == 'GET' || method == 'HEAD';
+    final isIdempotentWrite = method == 'PUT' || method == 'DELETE';
+    if (!isRead && !isIdempotentWrite) return handler.next(err);
+
+    final attempt = (opts.extra[_retryKey] as int?) ?? 0;
+    final maxAttempts = isRead ? _readMaxAttempts : _writeMaxAttempts;
+    if (attempt >= maxAttempts - 1 || !_isTransient(err)) {
+      return handler.next(err);
+    }
+
+    opts.extra[_retryKey] = attempt + 1;
+    // Backoff 600ms → 1500ms; memberi hosting bersama napas sebelum
+    // request berikutnya masuk ke worker yang sama.
+    await Future<void>.delayed(
+      Duration(milliseconds: attempt == 0 ? 600 : 1500),
+    );
+    try {
+      final response = await _dio.fetch(opts);
+      return handler.resolve(response);
+    } on DioException catch (e2) {
+      return handler.next(e2);
+    }
+  }
+
+  static bool _isTransient(DioException err) {
+    switch (err.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.badResponse:
+        final code = err.response?.statusCode ?? 0;
+        return code == 403 || code == 429 || code >= 500;
+      default:
+        return false;
+    }
+  }
+}
+
 /// ApiClient — klien HTTP (Dio) untuk backend Laravel Warung Lupi.
 ///
 /// Meniru `resources/js/api/client.js`:
@@ -114,7 +187,9 @@ class ApiClient {
         'ngrok-skip-browser-warning': 'true',
       },
     );
-    return Dio(options);
+    final dio = Dio(options);
+    dio.interceptors.add(TransientFailureRetry(dio));
+    return dio;
   }
 
   /// Uji konektivitas ke `GET /api/dashboard`. Mengembalikan null bila OK,
@@ -167,9 +242,19 @@ class ApiClient {
         case DioExceptionType.badResponse:
           final code = error.response?.statusCode;
           if (code == 401) return 'Sesi berakhir. Silakan masuk kembali.';
-          if (code == 403) return 'Anda tidak memiliki akses.';
+          // Backend tidak memakai auth → 403 di sini hampir selalu lapis
+          // CDN/hosting yang sementara menolak (lihat TransientFailureRetry;
+          // retry sudah dicoba sebelum pesan ini muncul).
+          if (code == 403) {
+            return 'Server sementara menolak permintaan ($host). '
+                'Coba lagi sebentar lagi.';
+          }
           if (code == 404) return 'Data tidak ditemukan.';
           if (code == 422) return 'Data yang dikirim tidak valid.';
+          if (code == 429) {
+            return 'Terlalu banyak permintaan ke ($host). '
+                'Tunggu beberapa detik lalu coba lagi.';
+          }
           if (code != null && code >= 500) {
             return 'Server sedang bermasalah. Coba lagi beberapa saat.';
           }
