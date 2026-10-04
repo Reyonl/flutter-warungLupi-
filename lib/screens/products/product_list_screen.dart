@@ -11,7 +11,14 @@ import '../../widgets/widgets.dart';
 /// Search (debounce), filter kategori & status, tambah/edit modal,
 /// toggle aktif, hapus confirm, toasts.
 class ProductListScreen extends StatefulWidget {
-  const ProductListScreen({super.key});
+  /// `true` saat dirender sebagai body Scaffold [HomeShell] (via drawer).
+  /// `false` (default) → layar membungkus dirinya dengan Scaffold + AppBar,
+  /// sehingga aman di-push lewat Navigator (mis. chip "Tambah Item" di
+  /// Dashboard). Tanpa Scaffold, TextField di body tidak punya ancestor
+  /// Material → crash "No Material widget found" + overflow masif.
+  final bool embedded;
+
+  const ProductListScreen({super.key, this.embedded = false});
 
   @override
   State<ProductListScreen> createState() => _ProductListScreenState();
@@ -75,6 +82,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final content = _buildContent(context);
+    if (widget.embedded) return content;
+    // Di-push langsung (chip "Tambah Item" di Dashboard): body telanjang
+    // tanpa Scaffold membuat TextField kehilangan ancestor Material.
+    return Material(
+      color: AppColors.background,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: const Text('Daftar Item')),
+        body: SafeArea(child: content),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final prov = context.watch<ProductProvider>();
 
     return Column(

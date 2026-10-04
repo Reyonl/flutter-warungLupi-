@@ -218,7 +218,7 @@ class _HomeShellState extends State<HomeShell> {
       case ShellPage.customers:
         return const CustomerListScreen();
       case ShellPage.items:
-        return const ProductListScreen();
+        return const ProductListScreen(embedded: true);
       case ShellPage.categories:
         return const CategoryListScreen();
       case ShellPage.cigaretteReport:
