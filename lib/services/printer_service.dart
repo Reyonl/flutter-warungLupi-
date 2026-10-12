@@ -249,8 +249,9 @@ class PrinterService {
     addText(rightAlign('Pelanggan', t.customer?.name ?? 'Umum') + '\n');
     addText('-' * maxChars + '\n');
 
-    // Items
-    for (final item in t.items) {
+    // Items (penambahan) — padanan web: tambahan dulu, potongan terpisah
+    final split = splitItems(t.items);
+    for (final item in split.adds) {
       final name = (item.description != null && item.description!.isNotEmpty)
           ? '${item.productName} - ${item.description}'
           : item.productName;
@@ -264,9 +265,39 @@ class PrinterService {
       addText(rightAlign(leftStr, rightStr) + '\n');
     }
 
+    // Potongan (item minus)
+    if (split.deductions.isNotEmpty) {
+      addText('-' * maxChars + '\n');
+      addBytes([0x1B, 0x61, 0x01]); // Center
+      boldOn();
+      addText('POTONGAN\n');
+      boldOff();
+      addBytes([0x1B, 0x61, 0x00]); // Left
+      for (final item in split.deductions) {
+        final name = (item.description != null && item.description!.isNotEmpty)
+            ? '${item.productName} - ${item.description}'
+            : item.productName;
+        for (final l in wrapText(name)) {
+          addText(l + '\n');
+        }
+        addText(
+          rightAlign(
+                '${item.quantity} x ${formatNumber(item.unitPrice)}',
+                '-${formatNumber(item.subtotal.abs())}',
+              ) +
+              '\n',
+        );
+      }
+    }
+
     addText('-' * maxChars + '\n');
 
     // Total
+    if (split.deductions.isNotEmpty) {
+      addText(
+        rightAlign('Sebelum Potongan', formatNumber(split.totalBefore)) + '\n',
+      );
+    }
     boldOn();
     addBytes([0x1B, 0x21, 0x10]); // Double height only
     addText(rightAlign('TOTAL', formatNumber(t.totalAmount)) + '\n');
@@ -354,7 +385,9 @@ class PrinterService {
     out.add('Plg  : ${t.customer?.name ?? 'Umum'}');
     out.add(lineDash);
 
-    for (final item in t.items) {
+    // Items (penambahan) — tambahan dulu, potongan terpisah (padanan web)
+    final split = splitItems(t.items);
+    for (final item in split.adds) {
       final name = (item.description != null && item.description!.isNotEmpty)
           ? '${item.productName} - ${item.description}'
           : item.productName;
@@ -367,7 +400,23 @@ class PrinterService {
       );
     }
 
+    // Potongan (item minus)
+    if (split.deductions.isNotEmpty) {
+      out.add(lineDash);
+      out.add(centerText('POTONGAN'));
+      for (final item in split.deductions) {
+        final name = (item.description != null && item.description!.isNotEmpty)
+            ? '${item.productName} - ${item.description}'
+            : item.productName;
+        out.addAll(wrapText(name));
+        out.add(rightAlign('', '-${formatNumber(item.subtotal.abs())}'));
+      }
+    }
+
     out.add(lineDash);
+    if (split.deductions.isNotEmpty) {
+      out.add(rightAlign('Sebelum Potongan', formatNumber(split.totalBefore)));
+    }
     out.add(rightAlign('TOTAL', formatNumber(t.totalAmount)));
 
     if (t.notes != null && t.notes!.isNotEmpty) {

@@ -32,6 +32,10 @@ class ThermalReceipt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = transaction.items;
+    final split = splitItems(items);
+    final adds = split.adds;
+    final deductions = split.deductions;
+    final totalBefore = split.totalBefore;
     final dateStr = formatDateShort(transaction.transactionDate);
     final font = 'Courier';
 
@@ -122,8 +126,8 @@ class ThermalReceipt extends StatelessWidget {
           row('Tanggal', dateStr),
           row('Pelanggan', transaction.customer?.name ?? 'Umum'),
           divider,
-          // Items
-          ...items.map((item) {
+          // Items (penambahan)
+          ...adds.map((item) {
             final name =
                 (item.description != null && item.description!.isNotEmpty)
                 ? '${item.productName} - ${item.description}'
@@ -167,8 +171,93 @@ class ThermalReceipt extends StatelessWidget {
               ),
             );
           }),
+          // Potongan (item minus) — blok terpisah, padanan web
+          if (deductions.isNotEmpty) ...[
+            divider,
+            Text(
+              'POTONGAN',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: font,
+                fontSize: preview ? 14 : 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...deductions.map((item) {
+              final name =
+                  (item.description != null && item.description!.isNotEmpty)
+                  ? '${item.productName} - ${item.description}'
+                  : item.productName;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontFamily: font,
+                        fontSize: preview ? 14 : 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${item.quantity} x ${formatNumber(item.unitPrice)}',
+                          style: TextStyle(
+                            fontFamily: font,
+                            fontSize: preview ? 14 : 12,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          '-${formatNumber(item.subtotal.abs())}',
+                          style: TextStyle(
+                            fontFamily: font,
+                            fontSize: preview ? 14 : 12,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
           divider,
-          // Total
+          // Total — "Sebelum Potongan" hanya bila ada potongan
+          if (deductions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Sebelum Potongan',
+                    style: TextStyle(
+                      fontFamily: font,
+                      fontSize: preview ? 14 : 12,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    formatNumber(totalBefore),
+                    style: TextStyle(
+                      fontFamily: font,
+                      fontSize: preview ? 14 : 12,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(

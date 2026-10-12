@@ -257,7 +257,7 @@ class _BonDetailScreenState extends State<BonDetailScreen> {
             lineDash,
             style: pw.TextStyle(fontSize: 8, font: pw.Font.courier()),
           ),
-          ...t.items.expand((item) {
+          ...splitItems(t.items).adds.expand((item) {
             final name =
                 (item.description != null && item.description!.isNotEmpty)
                 ? '${item.productName} - ${item.description}'
@@ -283,10 +283,58 @@ class _BonDetailScreenState extends State<BonDetailScreen> {
               ),
             ];
           }),
+          if (splitItems(t.items).deductions.isNotEmpty) ...[
+            pw.Text(
+              lineDash,
+              style: pw.TextStyle(fontSize: 8, font: pw.Font.courier()),
+            ),
+            pw.Text(
+              centerText('POTONGAN'),
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                font: pw.Font.courier(),
+              ),
+            ),
+            ...splitItems(t.items).deductions.expand((item) {
+              final name =
+                  (item.description != null && item.description!.isNotEmpty)
+                  ? '${item.productName} - ${item.description}'
+                  : item.productName;
+              final lines = wrapText(name);
+              return [
+                ...lines.map(
+                  (l) => pw.Text(
+                    l,
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      font: pw.Font.courier(),
+                    ),
+                  ),
+                ),
+                pw.Text(
+                  rightAlign(
+                    '${item.quantity} x ${formatNumber(item.unitPrice)}',
+                    '-${formatNumber(item.subtotal.abs())}',
+                  ),
+                  style: pw.TextStyle(fontSize: 9, font: pw.Font.courier()),
+                ),
+              ];
+            }),
+          ],
           pw.Text(
             lineDash,
             style: pw.TextStyle(fontSize: 8, font: pw.Font.courier()),
           ),
+          if (splitItems(t.items).deductions.isNotEmpty)
+            pw.Text(
+              rightAlign(
+                'Sebelum Potongan',
+                formatNumber(splitItems(t.items).totalBefore),
+              ),
+              style: pw.TextStyle(fontSize: 9, font: pw.Font.courier()),
+            ),
           pw.Text(
             rightAlign('TOTAL', formatNumber(t.totalAmount)),
             style: pw.TextStyle(
