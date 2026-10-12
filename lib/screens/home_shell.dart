@@ -5,6 +5,7 @@ import 'bon/bon_create_screen.dart';
 import 'bon/bon_list_screen.dart';
 import 'customers/customer_list_screen.dart';
 import 'dashboard_screen.dart';
+import 'expenses/expense_list_screen.dart';
 import 'products/category_list_screen.dart';
 import 'products/cigarette_report_screen.dart';
 import 'products/product_list_screen.dart';
@@ -27,6 +28,7 @@ enum ShellPage {
   bonList,
   customers,
   items,
+  expense,
   categories,
   cigaretteReport,
   settings,
@@ -41,6 +43,7 @@ class _HomeShellState extends State<HomeShell> {
     ShellPage.bonList: 'Riwayat Bon',
     ShellPage.customers: 'Pelanggan',
     ShellPage.items: 'Daftar Item',
+    ShellPage.expense: 'Pengeluaran',
     ShellPage.categories: 'Kategori',
     ShellPage.cigaretteReport: 'Laporan Rokok',
     ShellPage.settings: 'Pengaturan',
@@ -171,6 +174,11 @@ class _HomeShellState extends State<HomeShell> {
                   item(ShellPage.customers, 'Pelanggan', Icons.people_outline),
                   item(ShellPage.items, 'Item', Icons.inventory_2_outlined),
                   item(
+                    ShellPage.expense,
+                    'Pengeluaran',
+                    Icons.account_balance_wallet_outlined,
+                  ),
+                  item(
                     ShellPage.categories,
                     'Kategori',
                     Icons.category_outlined,
@@ -219,6 +227,8 @@ class _HomeShellState extends State<HomeShell> {
         return const CustomerListScreen();
       case ShellPage.items:
         return const ProductListScreen(embedded: true);
+      case ShellPage.expense:
+        return const ExpenseListScreen(embedded: true);
       case ShellPage.categories:
         return const CategoryListScreen();
       case ShellPage.cigaretteReport:
