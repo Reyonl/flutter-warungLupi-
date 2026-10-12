@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' hide Category;
+import 'package:flutter/material.dart';
 
 import '../core/api/api_client.dart';
 import '../models/models.dart';
@@ -374,6 +374,146 @@ class TransactionListProvider extends ChangeNotifier with LoadableState {
       return null;
     } catch (e) {
       return 'Gagal menghapus bon.';
+    }
+  }
+}
+
+/// Provider pengeluaran — mirror `ExpenseList.jsx` + `Api\ExpenseController`.
+///
+/// Filter mengikuti web: rentang tanggal (date_from/date_to), sumber
+/// (manual|bon), dan pencarian; ringkasan total ikut filter aktif.
+/// Pengeluaran `source=bon` tidak bisa diedit/dihapus manual (backend 422).
+class ExpenseProvider extends ChangeNotifier with LoadableState {
+  ExpenseProvider(this._repo);
+
+  final ExpenseRepository _repo;
+
+  ExpensePage? page;
+  String dateFrom = '';
+  String dateTo = '';
+  String source = '';
+  String search = '';
+  int currentPage = 1;
+
+  bool get hasData => page != null;
+  ExpenseSummary get summary => page?.summary ?? ExpenseSummary.empty;
+
+  /// Muat halaman pengeluaran (default halaman 1 / halaman [page]).
+  Future<void> load({int page = 1}) async {
+    currentPage = page;
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      this.page = await _repo.index(
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+        source: source,
+        search: search,
+        page: page,
+      );
+    } catch (e) {
+      error = ApiClient.errorMessage(e, fallback: 'Gagal memuat pengeluaran.');
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  void setDateRange(String from, String to) {
+    dateFrom = from;
+    dateTo = to;
+    load(page: 1);
+  }
+
+  /// Pilih satu sisi rentang lewat date picker (mirip _pickDate di laporan rokok).
+  Future<void> pickDate(BuildContext context, {required bool isFrom}) async {
+    final current = isFrom ? dateFrom : dateTo;
+    final initial = DateTime.tryParse(current) ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    if (isFrom) {
+      dateFrom = toInputDate(picked);
+    } else {
+      dateTo = toInputDate(picked);
+    }
+    load(page: 1);
+  }
+
+  void setSource(String v) {
+    source = v;
+    load(page: 1);
+  }
+
+  void setSearch(String v) {
+    search = v;
+    load(page: 1);
+  }
+
+  void resetFilter() {
+    dateFrom = '';
+    dateTo = '';
+    source = '';
+    search = '';
+    load(page: 1);
+  }
+
+  /// Simpan pengeluaran manual (tambah bila [id] null, edit bila ada).
+  /// Mengembalikan pesan error siap tampil, atau null bila sukses.
+  Future<String?> save({
+    int? id,
+    required String expenseDate,
+    required String title,
+    String? category,
+    required int amount,
+    String? notes,
+  }) async {
+    try {
+      if (id == null) {
+        await _repo.store(
+          expenseDate: expenseDate,
+          title: title,
+          category: category,
+          amount: amount,
+          notes: notes,
+        );
+      } else {
+        await _repo.update(
+          id,
+          expenseDate: expenseDate,
+          title: title,
+          category: category,
+          amount: amount,
+          notes: notes,
+        );
+      }
+      // Header/summary dihitung server → selalu muat ulang halaman aktif.
+      await load(page: id == null ? 1 : currentPage);
+      return null;
+    } catch (e) {
+      return ApiClient.errorMessage(
+        e,
+        fallback: 'Gagal menyimpan pengeluaran.',
+      );
+    }
+  }
+
+  /// Hapus pengeluaran manual. Pengeluaran dari bon ditolak backend (422).
+  Future<String?> delete(Expense e) async {
+    try {
+      await _repo.destroy(e.id);
+      await load(page: currentPage);
+      return null;
+    } catch (err) {
+      return ApiClient.errorMessage(
+        err,
+        fallback: 'Gagal menghapus pengeluaran.',
+      );
     }
   }
 }

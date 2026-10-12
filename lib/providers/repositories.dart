@@ -351,6 +351,83 @@ class TransactionRepository {
   }
 }
 
+/// Repository pengeluaran — mirror `Api\ExpenseController`.
+class ExpenseRepository {
+  final Dio _dio = ApiClient.instance.dio;
+
+  /// GET /api/expenses?date_from=&date_to=&source=&category=&search=&page=
+  Future<ExpensePage> index({
+    String? dateFrom,
+    String? dateTo,
+    String? source,
+    String? category,
+    String? search,
+    int page = 1,
+  }) async {
+    final params = <String, dynamic>{'page': page};
+    if (dateFrom != null && dateFrom.isNotEmpty) params['date_from'] = dateFrom;
+    if (dateTo != null && dateTo.isNotEmpty) params['date_to'] = dateTo;
+    if (source != null && source.isNotEmpty) params['source'] = source;
+    if (category != null && category.isNotEmpty) params['category'] = category;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final res = await _dio.get('/expenses', queryParameters: params);
+    return ExpensePage.fromJson((res.data as Map).cast<String, dynamic>());
+  }
+
+  /// POST /api/expenses — catat pengeluaran manual (source selalu `manual`).
+  Future<Expense> store({
+    required String expenseDate,
+    required String title,
+    String? category,
+    required int amount,
+    String? notes,
+  }) async {
+    final res = await _dio.post(
+      '/expenses',
+      data: {
+        'expense_date': expenseDate,
+        'title': title.trim(),
+        'category': (category == null || category.trim().isEmpty)
+            ? null
+            : category.trim(),
+        'amount': amount,
+        'notes': (notes == null || notes.trim().isEmpty) ? null : notes.trim(),
+      },
+    );
+    return Expense.fromJson((res.data as Map).cast<String, dynamic>());
+  }
+
+  /// PUT /api/expenses/{id} — hanya untuk `source=manual`
+  /// (backend menolak dengan 422 untuk pengeluaran dari bon).
+  Future<Expense> update(
+    int id, {
+    String? expenseDate,
+    String? title,
+    String? category,
+    int? amount,
+    String? notes,
+  }) async {
+    final res = await _dio.put(
+      '/expenses/$id',
+      data: {
+        if (expenseDate != null) 'expense_date': expenseDate,
+        if (title != null) 'title': title.trim(),
+        if (category != null)
+          'category': category.trim().isEmpty ? null : category.trim(),
+        if (amount != null) 'amount': amount,
+        if (notes != null) 'notes': notes.trim().isEmpty ? null : notes.trim(),
+      },
+    );
+    return Expense.fromJson((res.data as Map).cast<String, dynamic>());
+  }
+
+  /// DELETE /api/expenses/{id} — hanya untuk `source=manual`
+  /// (422 untuk pengeluaran dari bon; hapus item di bon terkait).
+  Future<void> destroy(int id) async {
+    await _dio.delete('/expenses/$id');
+  }
+}
+
 /// Repository dashboard — mirror `Api\DashboardController`.
 class DashboardRepository {
   final Dio _dio = ApiClient.instance.dio;
@@ -376,6 +453,8 @@ class DashboardRepository {
       lunasHariIni: numFrom(stats['lunas_hari_ini']),
       lunasTotal: numFrom(stats['lunas_total']),
       masihHutang: numFrom(stats['masih_hutang']),
+      pengeluaranHariIni: numFrom(stats['pengeluaran_hari_ini']),
+      pengeluaranTotal: numFrom(stats['pengeluaran_total']),
       totalPelanggan: numFrom(stats['total_pelanggan']),
       recent: recent,
     );
@@ -419,6 +498,8 @@ class DashboardData {
   final int lunasHariIni;
   final int lunasTotal;
   final int masihHutang;
+  final int pengeluaranHariIni;
+  final int pengeluaranTotal;
   final int totalPelanggan;
   final List<TransactionSummary> recent;
 
@@ -428,6 +509,8 @@ class DashboardData {
     required this.lunasHariIni,
     required this.lunasTotal,
     required this.masihHutang,
+    this.pengeluaranHariIni = 0,
+    this.pengeluaranTotal = 0,
     required this.totalPelanggan,
     required this.recent,
   });

@@ -481,6 +481,177 @@ class CigaretteReport {
   }
 }
 
+// ==================== PENGELUARAN ====================
+// Padanan `Api\ExpenseController` + `resources/js/pages/expenses/ExpenseList.jsx`.
+// `source` = `manual` (input langsung) | `bon` (auto dari item minus).
+
+/// Satu catatan pengeluaran — mirror tabel `expenses`.
+class Expense {
+  final int id;
+  final String expenseDate; // yyyy-MM-dd
+  final String title;
+  final String? category;
+  final int amount; // selalu positif (nominal pengeluaran)
+  final String source; // manual | bon
+  final int? transactionId;
+  final String? transactionNumber; // dari relasi transaction
+  final String? notes;
+
+  const Expense({
+    required this.id,
+    required this.expenseDate,
+    required this.title,
+    this.category,
+    required this.amount,
+    required this.source,
+    this.transactionId,
+    this.transactionNumber,
+    this.notes,
+  });
+
+  bool get isFromBon => source == 'bon';
+
+  factory Expense.fromJson(Map<String, dynamic> json) {
+    final tx = json['transaction'];
+    final rawDate = (json['expense_date'] ?? '').toString();
+    return Expense(
+      id: numFrom(json['id']),
+      // datetime DB bisa datang sebagai "2026-10-12 00:00:00" → ambil 10
+      // karakter pertama; string kosong / pendek jangan sampai RangeError.
+      expenseDate: rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate,
+      title: (json['title'] ?? '') as String,
+      category: json['category'] as String?,
+      amount: numFrom(json['amount']),
+      source: (json['source'] ?? 'manual') as String,
+      transactionId: tx is Map ? numFromOrNull(tx['id']) : null,
+      transactionNumber: tx is Map
+          ? (tx['transaction_number'] as String?)
+          : null,
+      notes: json['notes'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'expense_date': expenseDate,
+    'title': title,
+    if (category != null && category!.isNotEmpty) 'category': category,
+    'amount': amount,
+    if (notes != null && notes!.isNotEmpty) 'notes': notes,
+  };
+}
+
+/// Ringkasan pengeluaran — `summary` dari `GET /api/expenses`
+/// (mengikuti filter aktif; SUM DECIMAL bisa datang sebagai String).
+class ExpenseSummary {
+  final int totalAmount;
+  final int count;
+  final int manualAmount;
+  final int bonAmount;
+
+  const ExpenseSummary({
+    required this.totalAmount,
+    required this.count,
+    required this.manualAmount,
+    required this.bonAmount,
+  });
+
+  static const empty = ExpenseSummary(
+    totalAmount: 0,
+    count: 0,
+    manualAmount: 0,
+    bonAmount: 0,
+  );
+
+  factory ExpenseSummary.fromJson(Map<String, dynamic> json) {
+    final bySource = json['by_source'] is Map
+        ? (json['by_source'] as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
+    return ExpenseSummary(
+      totalAmount: numFrom(json['total_amount']),
+      count: numFrom(json['count']),
+      manualAmount: numFrom(bySource['manual']),
+      bonAmount: numFrom(bySource['bon']),
+    );
+  }
+}
+
+/// Response halaman pengeluaran — `GET /api/expenses?page=...`
+/// (data paginated + summary mengikuti filter).
+class ExpensePage {
+  final List<Expense> data;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+  final ExpenseSummary summary;
+
+  const ExpensePage({
+    required this.data,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+    required this.summary,
+  });
+
+  factory ExpensePage.fromJson(Map<String, dynamic> json) {
+    final dataJson = json['data'] is List ? json['data'] as List : const [];
+    return ExpensePage(
+      data: dataJson
+          .whereType<Map<String, dynamic>>()
+          .map(Expense.fromJson)
+          .toList(),
+      currentPage: numFrom(json['current_page'], fallback: 1),
+      lastPage: numFrom(json['last_page'], fallback: 1),
+      total: numFrom(json['total'], fallback: dataJson.length),
+      summary: json['summary'] is Map
+          ? ExpenseSummary.fromJson(
+              (json['summary'] as Map).cast<String, dynamic>(),
+            )
+          : ExpenseSummary.empty,
+    );
+  }
+}
+
+/// Hasil pemisahan item bon: penambahan vs pengurangan (potongan).
+/// Padanan `splitItems()` di CreateTransaction.jsx & TransactionDetail.jsx —
+/// item minus = potongan, juga tercatat sebagai pengeluaran di backend.
+class ItemSplit {
+  final List<TransactionItem> adds;
+  final List<TransactionItem> deductions;
+  final int totalBefore; // jumlah subtotal item penambahan (+)
+  final int totalDeduct; // jumlah |subtotal| item pengurangan
+
+  const ItemSplit({
+    required this.adds,
+    required this.deductions,
+    required this.totalBefore,
+    required this.totalDeduct,
+  });
+
+  bool get hasDeductions => deductions.isNotEmpty;
+  int get finalTotal => totalBefore - totalDeduct;
+}
+
+/// Pisahkan item bon: subtotal >= 0 → penambahan, < 0 → pengurangan.
+ItemSplit splitItems(List<TransactionItem> items) {
+  final adds = <TransactionItem>[];
+  final deductions = <TransactionItem>[];
+  for (final item in items) {
+    if (item.subtotal < 0) {
+      deductions.add(item);
+    } else {
+      adds.add(item);
+    }
+  }
+  final totalBefore = adds.fold<int>(0, (s, i) => s + i.subtotal);
+  final totalDeduct = deductions.fold<int>(0, (s, i) => s + i.subtotal.abs());
+  return ItemSplit(
+    adds: adds,
+    deductions: deductions,
+    totalBefore: totalBefore,
+    totalDeduct: totalDeduct,
+  );
+}
+
 /// Ringkasan rokok satu bon — `GET /api/transactions/{id}/cigarettes`.
 class BonCigaretteSummary {
   final List<CigaretteItemRow> items;
