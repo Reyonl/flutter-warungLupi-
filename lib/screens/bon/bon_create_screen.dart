@@ -515,8 +515,11 @@ class _BonCreateScreenState extends State<BonCreateScreen> {
                         // ---- 4. Total & Status Pembayaran ----
                         _TotalCard(
                           totalAmount: prov.totalAmount,
+                          items: prov.orderedItems,
                           paymentStatus: prov.paymentStatus,
                           onPaymentStatus: _updatePaymentStatus,
+                          onEditItem: _handleEditItem,
+                          onDeleteDeduction: _removeItem,
                         ),
 
                         // ---- 5. Action ----
@@ -1114,22 +1117,37 @@ class _ItemRow extends StatelessWidget {
 // ============================ Total ============================
 class _TotalCard extends StatelessWidget {
   final int totalAmount;
+  final List<TransactionItem> items;
   final String paymentStatus;
   final ValueChanged<String> onPaymentStatus;
+  final ValueChanged<TransactionItem> onEditItem;
+  final ValueChanged<int> onDeleteDeduction;
 
   const _TotalCard({
     required this.totalAmount,
+    required this.items,
     required this.paymentStatus,
     required this.onPaymentStatus,
+    required this.onEditItem,
+    required this.onDeleteDeduction,
   });
 
   @override
   Widget build(BuildContext context) {
     final isPaid = paymentStatus == 'paid';
+    final split = splitItems(items);
+    final totalBefore = split.totalBefore;
+    final totalDeduct = split.totalDeduct;
+    final finalTotal = split.finalTotal;
+    // Web computed finalTotal = totalBefore - totalDeduct == SUM(subtotal);
+    // totalAmount dari server = SUM(subtotal) → sama. Tampilkan server value.
+    final total = totalAmount;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1144,16 +1162,53 @@ class _TotalCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  formatRupiah(totalAmount),
-                  style: const TextStyle(
+                  formatRupiah(total),
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textMain,
+                    color: total < 0
+                        ? AppColors.dangerText
+                        : AppColors.textMain,
                   ),
                 ),
               ],
             ),
-            const Divider(height: 24),
+            if (split.hasDeductions) ...[
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
+              // Breakdown: Total Sebelum Potongan → Pengurangan → Total Setelah
+              _BreakdownHeader(),
+              const SizedBox(height: 4),
+              _breakdownRow(
+                'Total Sebelum Potongan',
+                formatRupiah(totalBefore),
+              ),
+              const SizedBox(height: 10),
+              _DeductionList(
+                deductions: split.deductions,
+                onEditItem: onEditItem,
+                onDeleteDeduction: onDeleteDeduction,
+              ),
+              _breakdownRow(
+                'Total Pengurangan',
+                '-${formatRupiah(totalDeduct)}',
+                color: AppColors.dangerText,
+                bold: true,
+              ),
+              const SizedBox(height: 10),
+              _breakdownRow(
+                'Total Setelah Potongan',
+                formatRupiah(finalTotal),
+                color: finalTotal < 0
+                    ? AppColors.dangerText
+                    : AppColors.textMain,
+                bold: true,
+                large: true,
+              ),
+              const Divider(height: 24),
+            ] else
+              const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1166,7 +1221,6 @@ class _TotalCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Segmented: Sudah Dibayar / Berhutang
                 Expanded(
                   child: SegmentedButton<String>(
                     segments: const [
@@ -1211,6 +1265,136 @@ class _TotalCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _breakdownRow(
+    String label,
+    String value, {
+    Color color = AppColors.textMain,
+    bool bold = false,
+    bool large = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: large ? 14 : 13,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              color: bold ? AppColors.textMain : AppColors.gray600,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: large ? 18 : 14,
+              fontWeight: FontWeight.w700,
+              color: color,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Label blok pengurangan (padanan web "Pengurangan").
+class _BreakdownHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      'Pengurangan',
+      style: TextStyle(
+        fontSize: 11.5,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+        color: AppColors.dangerText,
+      ),
+    );
+  }
+}
+
+/// Daftar baris potongan — tiap baris punya tombol Edit & Hapus.
+class _DeductionList extends StatelessWidget {
+  final List<TransactionItem> deductions;
+  final ValueChanged<TransactionItem> onEditItem;
+  final ValueChanged<int> onDeleteDeduction;
+
+  const _DeductionList({
+    required this.deductions,
+    required this.onEditItem,
+    required this.onDeleteDeduction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.dangerBg.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.dangerBorder),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < deductions.length; i++) ...[
+            if (i > 0) const Divider(height: 16, color: AppColors.dangerBorder),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    deductions[i].productName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMain,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '-${formatRupiah(deductions[i].subtotal.abs())}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.dangerText,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                InkWell(
+                  onTap: () => onEditItem(deductions[i]),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Icon(Icons.edit, size: 15, color: AppColors.gray600),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => onDeleteDeduction(deductions[i].id),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 15,
+                      color: AppColors.gray600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
