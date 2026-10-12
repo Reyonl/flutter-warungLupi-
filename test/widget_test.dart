@@ -8,8 +8,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:rekapan_warung/core/theme/app_theme.dart';
+import 'package:rekapan_warung/models/models.dart';
 import 'package:rekapan_warung/utils/promo.dart';
+import 'package:rekapan_warung/widgets/thermal_receipt.dart';
 import 'package:rekapan_warung/widgets/widgets.dart';
+
+/// Bon uji: 2 penambahan (5.000 + 7.000) + 1 potongan (-5.000).
+/// Nomor bon sengaja pendek: font uji flutter_test bersifat monospace persegi
+/// (tiap glyph 1em) sehingga nomor 16 karakter pada lebar 58mm memicu overflow
+/// layout palsu yang tidak terjadi di produksi.
+Transaction _receiptTransaction() {
+  return Transaction(
+    id: 1,
+    transactionNumber: 'INV-001',
+    transactionDate: '2026-10-12',
+    totalAmount: 7000,
+    status: 'completed',
+    paymentStatus: 'paid',
+    customer: const Customer(id: 1, name: 'Untung', isActive: true),
+    items: const [
+      TransactionItem(
+        id: 1,
+        productName: 'Nasi Uduk',
+        quantity: 1,
+        unit: 'pcs',
+        unitPrice: 5000,
+        subtotal: 5000,
+      ),
+      TransactionItem(
+        id: 2,
+        productName: 'Aqua',
+        quantity: 1,
+        unit: 'pcs',
+        unitPrice: 7000,
+        subtotal: 7000,
+      ),
+      TransactionItem(
+        id: 3,
+        productName: 'Gorengan',
+        quantity: 1,
+        unit: 'pcs',
+        unitPrice: -5000,
+        subtotal: -5000,
+      ),
+    ],
+  );
+}
 
 void main() {
   group('AppFormField', () {
@@ -84,6 +128,41 @@ void main() {
       expect(formatPriceDisplay(1234567), '1.234.567');
       expect(formatPriceDisplay(-5000), '-5.000');
       expect(formatPriceDisplay(''), '');
+    });
+  });
+
+  group('ThermalReceipt — blok POTONGAN (mirror web)', () {
+    testWidgets('item minus dipisah: POTONGAN + Sebelum Potongan + TOTAL', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ThermalReceipt(
+                transaction: _receiptTransaction(),
+                size: '80mm', // fontSize 14 di 58mm overflow palsu di font uji
+                preview: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Penambahan normal
+      expect(find.text('Nasi Uduk'), findsOneWidget);
+      expect(find.text('Aqua'), findsOneWidget);
+      // Blok potongan terpisah
+      expect(find.text('POTONGAN'), findsOneWidget);
+      expect(find.text('Gorengan'), findsOneWidget);
+      // "-5.000" (subtotal potongan, tanda minus)
+      expect(find.text('-5.000'), findsOneWidget);
+      // Total: Sebelum Potongan (12.000) → TOTAL (7.000).
+      // "7.000" muncul 2×: subtotal Aqua + nilai TOTAL.
+      expect(find.text('Sebelum Potongan'), findsOneWidget);
+      expect(find.text('12.000'), findsOneWidget);
+      expect(find.text('7.000'), findsNWidgets(2));
     });
   });
 }
