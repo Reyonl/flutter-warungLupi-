@@ -11,6 +11,7 @@ import 'bon/bon_create_screen.dart';
 import 'bon/bon_detail_screen.dart';
 import 'bon/bon_list_screen.dart';
 import 'customers/customer_form_screen.dart';
+import 'expenses/expense_list_screen.dart';
 import 'products/product_list_screen.dart';
 
 /// Dashboard — meniru `pages/Dashboard.jsx` v2 (sky-blue, border-first).
@@ -223,6 +224,25 @@ class _FocalToday extends StatelessWidget {
                 ),
                 child: Text(
                   'Sisa hutang ${formatRupiah(data.masihHutang)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textMuted,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Color(0xFFC4C9D0),
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ],
+            // Padanan web: link "Pengeluaran RpX" → /pengeluaran (bila ada).
+            if (data.pengeluaranHariIni > 0) ...[
+              const _Dot(),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ExpenseListScreen()),
+                ),
+                child: Text(
+                  'Pengeluaran ${formatRupiah(data.pengeluaranHariIni)}',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textMuted,
